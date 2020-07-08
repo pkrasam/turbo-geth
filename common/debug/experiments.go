@@ -55,11 +55,6 @@ func IsBlockCompressionEnabled() bool {
 }
 
 var (
-	trackWitnessSize       bool
-	getTrackWitnessSizeLen sync.Once
-)
-
-var (
 	testDB    string
 	getTestDB sync.Once
 )
