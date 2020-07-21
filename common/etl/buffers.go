@@ -17,8 +17,8 @@ const (
 	// if first v1 was added under key K, then v2; only v1 will stay
 	SortableOldestAppearedBuffer
 
-	BufferOptimalSize = 256 * 1024 * 1024 /* 256 mb | var because we want to sometimes change it from tests */
-	BufIOSize         = 64 * 4096         // 64 pages | default is 1 page | increasing further doesn't show speedup on SSD
+	BufferOptimalSize = 64 * 1024 * 1024 /* 256 mb | var because we want to sometimes change it from tests */
+	BufIOSize         = 64 * 4096        // 64 pages | default is 1 page | increasing further doesn't show speedup on SSD
 )
 
 type Buffer interface {
@@ -75,7 +75,8 @@ func (b *sortableBuffer) Less(i, j int) bool {
 }
 
 func (b *sortableBuffer) Swap(i, j int) {
-	b.entries[i], b.entries[j] = b.entries[j], b.entries[i]
+	b.entries[i].key, b.entries[j].key = b.entries[j].key, b.entries[i].key
+	b.entries[i].value, b.entries[j].value = b.entries[j].value, b.entries[i].value
 }
 
 func (b *sortableBuffer) Get(i int) sortableBufferEntry {
@@ -143,7 +144,8 @@ func (b *appendSortableBuffer) Less(i, j int) bool {
 }
 
 func (b *appendSortableBuffer) Swap(i, j int) {
-	b.sortedBuf[i], b.sortedBuf[j] = b.sortedBuf[j], b.sortedBuf[i]
+	b.sortedBuf[i].key, b.sortedBuf[j].key = b.sortedBuf[j].key, b.sortedBuf[i].key
+	b.sortedBuf[i].value, b.sortedBuf[j].value = b.sortedBuf[j].value, b.sortedBuf[i].value
 }
 
 func (b *appendSortableBuffer) Get(i int) sortableBufferEntry {
@@ -213,7 +215,8 @@ func (b *oldestEntrySortableBuffer) Less(i, j int) bool {
 }
 
 func (b *oldestEntrySortableBuffer) Swap(i, j int) {
-	b.sortedBuf[i], b.sortedBuf[j] = b.sortedBuf[j], b.sortedBuf[i]
+	b.sortedBuf[i].key, b.sortedBuf[j].key = b.sortedBuf[j].key, b.sortedBuf[i].key
+	b.sortedBuf[i].value, b.sortedBuf[j].value = b.sortedBuf[j].value, b.sortedBuf[i].value
 }
 
 func (b *oldestEntrySortableBuffer) Get(i int) sortableBufferEntry {
