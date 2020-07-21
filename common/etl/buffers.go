@@ -17,8 +17,8 @@ const (
 	// if first v1 was added under key K, then v2; only v1 will stay
 	SortableOldestAppearedBuffer
 
-	BufferOptimalSize = 64 * 1024 * 1024 /* 256 mb | var because we want to sometimes change it from tests */
-	BufIOSize         = 64 * 4096        // 64 pages | default is 1 page | increasing further doesn't show speedup on SSD
+	BufferOptimalSize = 256 * 1024 * 1024 /* 256 mb | var because we want to sometimes change it from tests */
+	BufIOSize         = 64 * 4096         // 64 pages | default is 1 page | increasing further doesn't show speedup on SSD
 )
 
 type Buffer interface {
