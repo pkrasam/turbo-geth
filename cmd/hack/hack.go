@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/big"
+	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
@@ -1751,6 +1752,42 @@ func dupSortState(chaindata string) {
 	check(err)
 }
 
+// docker build -t hack -f ./cmd/hack/Dockerfile .
+// docker run --rm -it -v $(pwd):/app -v /Users/alex.sharov/Library/Ethereum/geth-remove-me2/geth/chaindata:/chaindata/ --memory 1G --memory-reservation 1G --memory-swap 0 --memory-swappiness 0 hack sh -c 'hack --action=lmdbStateAttack --chaindata=/chaindata'
+func lmdbStateAttack(chaindata string) {
+	db := ethdb.MustOpen(chaindata)
+	defer db.Close()
+	var accs [][]byte
+
+	db.KV().View(context.Background(), func(tx ethdb.Tx) error {
+		defer func(t time.Time) { fmt.Println("hack.go:1760", time.Since(t)) }(time.Now())
+		i := 0
+		tx.Bucket(dbutils.PlainStateBucket).Cursor().Walk(func(k, v []byte) (bool, error) {
+			i++
+			if i%100 == 0 {
+				accs = append(accs, k)
+			}
+			_ = k
+			_ = v
+			return true, nil
+		})
+		return nil
+	})
+
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(accs), func(i, j int) { accs[i], accs[j] = accs[j], accs[i] })
+
+	db.KV().View(context.Background(), func(tx ethdb.Tx) error {
+		defer func(t time.Time) { fmt.Println("hack.go:1777", time.Since(t)) }(time.Now())
+		c := tx.Bucket(dbutils.PlainStateBucket).Cursor()
+		for i := range accs {
+			c.Seek(accs[i])
+		}
+		return nil
+	})
+
+}
+
 func deleteLargeDupSortKey() {
 	dbFile := "statedb_dupsort_delete"
 	err := os.MkdirAll(dbFile, 0744)
@@ -2160,6 +2197,9 @@ func main() {
 	}
 	if *action == "dupSortState" {
 		dupSortState(*chaindata)
+	}
+	if *action == "lmdbStateAttack" {
+		lmdbStateAttack(*chaindata)
 	}
 	if *action == "changeSetStats" {
 		if err := changeSetStats(*chaindata, uint64(*block), uint64(*block)+uint64(*rewind)); err != nil {
