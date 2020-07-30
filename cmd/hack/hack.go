@@ -1764,7 +1764,7 @@ func lmdbStateAttack(chaindata string) {
 		i := 0
 		tx.Bucket(dbutils.BlockBodyPrefix).Cursor().Walk(func(k, _ []byte) (bool, error) {
 			i++
-			if i%1000 == 0 {
+			if i%10 == 0 {
 				accs = append(accs, common.CopyBytes(k))
 				if i%100_000 == 0 {
 					fmt.Printf("%dK\n", i/1000)
@@ -1788,9 +1788,10 @@ func lmdbStateAttack(chaindata string) {
 		})
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(accs), func(i, j int) { accs[i], accs[j] = accs[j], accs[i] })
 	for j := 0; j < 10; j++ {
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(accs), func(i, j int) { accs[i], accs[j] = accs[j], accs[i] })
+
 		db.KV().View(context.Background(), func(tx ethdb.Tx) error {
 			defer func(t time.Time) { fmt.Println("Random jumps", time.Since(t)) }(time.Now())
 			b := tx.Bucket(dbutils.BlockBodyPrefix)
