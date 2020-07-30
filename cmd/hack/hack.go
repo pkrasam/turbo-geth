@@ -1752,8 +1752,8 @@ func dupSortState(chaindata string) {
 	check(err)
 }
 
-// docker build -t hack -f ./cmd/hack/Dockerfile .
-// docker run --rm -it -v $(pwd):/app -v /Users/alex.sharov/Library/Ethereum/geth-remove-me2/geth/chaindata:/chaindata/ --memory 1G --memory-reservation 1G --memory-swap 0 --memory-swappiness 0 hack sh -c 'hack --action=lmdbStateAttack --chaindata=/chaindata'
+// docker build -t turbo-geth:alltools -f ./Dockerfile.alltools .
+// docker run --rm -it -v ~/Library/TurboGeth/remove-me2/tg/chaindata:/chaindata/ --memory 1G --memory-reservation 1G --memory-swap 0 --memory-swappiness 0 turbo-geth:alltools sh -c 'hack --action=lmdbStateAttack --chaindata=/chaindata'
 func lmdbStateAttack(chaindata string) {
 	db := ethdb.MustOpen(chaindata)
 	defer db.Close()
@@ -1762,30 +1762,44 @@ func lmdbStateAttack(chaindata string) {
 	db.KV().View(context.Background(), func(tx ethdb.Tx) error {
 		defer func(t time.Time) { fmt.Println("hack.go:1760", time.Since(t)) }(time.Now())
 		i := 0
-		tx.Bucket(dbutils.PlainStateBucket).Cursor().Walk(func(k, v []byte) (bool, error) {
+		tx.Bucket(dbutils.BlockBodyPrefix).Cursor().Walk(func(k, _ []byte) (bool, error) {
 			i++
-			if i%100 == 0 {
-				accs = append(accs, k)
+			if i%1000 == 0 {
+				accs = append(accs, common.CopyBytes(k))
+				if i%100_000 == 0 {
+					fmt.Printf("%dK\n", i/1000)
+
+				}
 			}
-			_ = k
-			_ = v
 			return true, nil
 		})
 		return nil
 	})
 
+	fmt.Printf("Items: %d\n", len(accs))
+	for j := 0; j < 10; j++ {
+		db.KV().View(context.Background(), func(tx ethdb.Tx) error {
+			defer func(t time.Time) { fmt.Println("Sequential jumps", time.Since(t)) }(time.Now())
+			b := tx.Bucket(dbutils.BlockBodyPrefix)
+			for i := range accs {
+				b.Get(accs[i])
+			}
+			return nil
+		})
+	}
+
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(accs), func(i, j int) { accs[i], accs[j] = accs[j], accs[i] })
-
-	db.KV().View(context.Background(), func(tx ethdb.Tx) error {
-		defer func(t time.Time) { fmt.Println("hack.go:1777", time.Since(t)) }(time.Now())
-		c := tx.Bucket(dbutils.PlainStateBucket).Cursor()
-		for i := range accs {
-			c.Seek(accs[i])
-		}
-		return nil
-	})
-
+	for j := 0; j < 10; j++ {
+		db.KV().View(context.Background(), func(tx ethdb.Tx) error {
+			defer func(t time.Time) { fmt.Println("Random jumps", time.Since(t)) }(time.Now())
+			b := tx.Bucket(dbutils.BlockBodyPrefix)
+			for i := range accs {
+				b.Get(accs[i])
+			}
+			return nil
+		})
+	}
 }
 
 func deleteLargeDupSortKey() {
